@@ -164,3 +164,25 @@ pub fn write_margin_note(args: fmt::Arguments) {
     writer.write_byte(b'\n');
     writer.color_code = ANNOTATION;
 }
+
+#[test_case]
+fn annotation_sets_a_single_line() {
+    println!("a test annotation, set in the ordinary hand");
+}
+
+#[test_case]
+fn annotation_survives_two_hundred_lines() {
+    for _ in 0..200 {
+        println!("the same line, copied out again");
+    }
+}
+
+#[test_case]
+fn ink_lands_where_ruled() {
+    let s = "each glyph in its ruled cell, none astray";
+    println!("{}", s);
+    for (i, c) in s.chars().enumerate() {
+        let screen_char = WRITER.lock().buffer.chars[BUFFER_HEIGHT - 2][i].read();
+        assert_eq!(char::from(screen_char.ascii_character), c);
+    }
+}

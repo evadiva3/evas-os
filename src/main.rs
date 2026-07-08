@@ -1,19 +1,21 @@
-
-
 #![no_std]
 #![no_main]
-
-mod vga_buffer;
+#![feature(custom_test_frameworks)]
+#![test_runner(marginalia::test_runner)]
+#![reexport_test_harness_main = "test_main"]
 
 use core::panic::PanicInfo;
+use marginalia::vga_buffer;
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
     boot_sequence();
 
+    #[cfg(test)]
+    test_main();
+
     loop {}
 }
-
 
 fn boot_sequence() {
     vga_buffer::write_annotation(format_args!("MARGINALIA"));
@@ -34,7 +36,7 @@ fn boot_sequence() {
     ));
 }
 
-
+#[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     vga_buffer::write_margin_note(format_args!(""));
@@ -58,4 +60,10 @@ fn panic(info: &PanicInfo) -> ! {
     ));
 
     loop {}
+}
+
+#[cfg(test)]
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    marginalia::test_panic_handler(info)
 }
