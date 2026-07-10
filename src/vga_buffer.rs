@@ -145,24 +145,36 @@ macro_rules! println {
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
-    WRITER.lock().write_fmt(args).unwrap();
+    use x86_64::instructions::interrupts;
+
+    interrupts::without_interrupts(|| {
+        WRITER.lock().write_fmt(args).unwrap();
+    });
 }
 
 pub fn write_annotation(args: fmt::Arguments) {
     use core::fmt::Write;
-    let mut writer = WRITER.lock();
-    writer.color_code = ANNOTATION;
-    writer.write_fmt(args).unwrap();
-    writer.write_byte(b'\n');
+    use x86_64::instructions::interrupts;
+
+    interrupts::without_interrupts(|| {
+        let mut writer = WRITER.lock();
+        writer.color_code = ANNOTATION;
+        writer.write_fmt(args).unwrap();
+        writer.write_byte(b'\n');
+    });
 }
 
 pub fn write_margin_note(args: fmt::Arguments) {
     use core::fmt::Write;
-    let mut writer = WRITER.lock();
-    writer.color_code = MARGIN_NOTE;
-    writer.write_fmt(args).unwrap();
-    writer.write_byte(b'\n');
-    writer.color_code = ANNOTATION;
+    use x86_64::instructions::interrupts;
+
+    interrupts::without_interrupts(|| {
+        let mut writer = WRITER.lock();
+        writer.color_code = MARGIN_NOTE;
+        writer.write_fmt(args).unwrap();
+        writer.write_byte(b'\n');
+        writer.color_code = ANNOTATION;
+    });
 }
 
 #[test_case]
@@ -179,10 +191,16 @@ fn annotation_survives_two_hundred_lines() {
 
 #[test_case]
 fn ink_lands_where_ruled() {
+    use core::fmt::Write;
+    use x86_64::instructions::interrupts;
+
     let s = "each glyph in its ruled cell, none astray";
-    println!("{}", s);
-    for (i, c) in s.chars().enumerate() {
-        let screen_char = WRITER.lock().buffer.chars[BUFFER_HEIGHT - 2][i].read();
-        assert_eq!(char::from(screen_char.ascii_character), c);
-    }
+    interrupts::without_interrupts(|| {
+        let mut writer = WRITER.lock();
+        writeln!(writer, "\n{}", s).expect("writeln failed");
+        for (i, c) in s.chars().enumerate() {
+            let screen_char = writer.buffer.chars[BUFFER_HEIGHT - 2][i].read();
+            assert_eq!(char::from(screen_char.ascii_character), c);
+        }
+    });
 }

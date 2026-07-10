@@ -4,17 +4,31 @@
 #![test_runner(marginalia::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
+use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 use marginalia::vga_buffer;
 
-#[no_mangle]
-pub extern "C" fn _start() -> ! {
+entry_point!(kernel_main);
+
+fn kernel_main(boot_info: &'static BootInfo) -> ! {
+    use marginalia::allocator;
+    use marginalia::memory::{self, BootInfoFrameAllocator};
+    use x86_64::VirtAddr;
+
+    marginalia::init();
+
+    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
+    let mut mapper = unsafe { memory::init(phys_mem_offset) };
+    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_map) };
+    allocator::init_heap(&mut mapper, &mut frame_allocator)
+        .expect("the heap could not be bound in");
+
     boot_sequence();
 
     #[cfg(test)]
     test_main();
 
-    loop {}
+    marginalia::hlt_loop();
 }
 
 fn boot_sequence() {
@@ -28,7 +42,19 @@ fn boot_sequence() {
         "leaf ii.   eighty columns ruled at 0xb8000; this ink is the proof"
     ));
     vga_buffer::write_annotation(format_args!(
-        "leaf iii.  no interrupts taken, no memory claimed; the page is otherwise blank"
+        "leaf iii.  a table of interruptions is drawn; faults become annotations"
+    ));
+    vga_buffer::write_annotation(format_args!(
+        "leaf iv.   a spare quire stands ready, should a fault double"
+    ));
+    vga_buffer::write_annotation(format_args!(
+        "leaf v.    the bells are rehung at 32; the keyboard is given leave to speak"
+    ));
+    vga_buffer::write_annotation(format_args!(
+        "leaf vi.   the whole of memory is charted from a fixed offset"
+    ));
+    vga_buffer::write_annotation(format_args!(
+        "leaf vii.  a heap is bound in at 0x4444_4444_0000; the text may grow"
     ));
     vga_buffer::write_annotation(format_args!(""));
     vga_buffer::write_annotation(format_args!(
@@ -59,7 +85,7 @@ fn panic(info: &PanicInfo) -> ! {
         "  nothing past this line survives. the hand rests here."
     ));
 
-    loop {}
+    marginalia::hlt_loop();
 }
 
 #[cfg(test)]
