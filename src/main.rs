@@ -13,6 +13,7 @@ entry_point!(kernel_main);
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
     use marginalia::allocator;
     use marginalia::memory::{self, BootInfoFrameAllocator};
+    use marginalia::task::{executor::Executor, keyboard, Task};
     use x86_64::VirtAddr;
 
     marginalia::init();
@@ -23,12 +24,16 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     allocator::init_heap(&mut mapper, &mut frame_allocator)
         .expect("the heap could not be bound in");
 
+    unsafe { marginalia::graphics::enter(phys_mem_offset) };
+
     boot_sequence();
 
     #[cfg(test)]
     test_main();
 
-    marginalia::hlt_loop();
+    let mut executor = Executor::new();
+    executor.spawn(Task::new(keyboard::print_keypresses()));
+    executor.run();
 }
 
 fn boot_sequence() {
@@ -36,30 +41,35 @@ fn boot_sequence() {
     vga_buffer::write_annotation(format_args!("an annotated machine, begun again"));
     vga_buffer::write_annotation(format_args!(""));
     vga_buffer::write_annotation(format_args!(
-        "leaf i.    the processor arrives in long mode; the loader's work holds"
+        "leaf i.    the processor holds long mode"
     ));
     vga_buffer::write_annotation(format_args!(
-        "leaf ii.   eighty columns ruled at 0xb8000; this ink is the proof"
+        "leaf ii.   forty columns at 0xa0000"
     ));
     vga_buffer::write_annotation(format_args!(
-        "leaf iii.  a table of interruptions is drawn; faults become annotations"
+        "leaf iii.  faults become annotations"
     ));
     vga_buffer::write_annotation(format_args!(
-        "leaf iv.   a spare quire stands ready, should a fault double"
+        "leaf iv.   a quire kept against doubling"
     ));
     vga_buffer::write_annotation(format_args!(
-        "leaf v.    the bells are rehung at 32; the keyboard is given leave to speak"
+        "leaf v.    bells at 32; the keys speak"
     ));
     vga_buffer::write_annotation(format_args!(
-        "leaf vi.   the whole of memory is charted from a fixed offset"
+        "leaf vi.   memory charted from an offset"
     ));
     vga_buffer::write_annotation(format_args!(
-        "leaf vii.  a heap is bound in at 0x4444_4444_0000; the text may grow"
+        "leaf vii.  a heap at 0x4444_4444_0000"
+    ));
+    vga_buffer::write_annotation(format_args!(
+        "leaf viii. each task writes in its turn"
+    ));
+    vga_buffer::write_annotation(format_args!(
+        "leaf ix.   the ink is true sepia at last"
     ));
     vga_buffer::write_annotation(format_args!(""));
-    vga_buffer::write_annotation(format_args!(
-        "the margin is quiet. it will note what follows."
-    ));
+    vga_buffer::write_annotation(format_args!("the margin is quiet."));
+    vga_buffer::write_annotation(format_args!("it will note what follows."));
 }
 
 #[cfg(not(test))]

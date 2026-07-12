@@ -147,6 +147,11 @@ pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
     use x86_64::instructions::interrupts;
 
+    if crate::graphics::is_active() {
+        crate::graphics::_print(args);
+        return;
+    }
+
     interrupts::without_interrupts(|| {
         WRITER.lock().write_fmt(args).unwrap();
     });
@@ -155,6 +160,11 @@ pub fn _print(args: fmt::Arguments) {
 pub fn write_annotation(args: fmt::Arguments) {
     use core::fmt::Write;
     use x86_64::instructions::interrupts;
+
+    if crate::graphics::is_active() {
+        crate::graphics::write_annotation(args);
+        return;
+    }
 
     interrupts::without_interrupts(|| {
         let mut writer = WRITER.lock();
@@ -167,6 +177,11 @@ pub fn write_annotation(args: fmt::Arguments) {
 pub fn write_margin_note(args: fmt::Arguments) {
     use core::fmt::Write;
     use x86_64::instructions::interrupts;
+
+    if crate::graphics::is_active() {
+        crate::graphics::write_margin_note(args);
+        return;
+    }
 
     interrupts::without_interrupts(|| {
         let mut writer = WRITER.lock();
